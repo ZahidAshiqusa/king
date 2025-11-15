@@ -16,36 +16,107 @@
     </div>
 
     <div id="tableWrap"></div>
+
+    <div class="vcf-download">
+      <h3>Download VCF Files</h3>
+      <div id="vcfButtons"></div>
+      <button id="downloadAll" class="btn small">Download All VCFs</button>
+    </div>
+
     <p class="muted">Data is read from the serverless endpoint.</p>
   </main>
-  <script>
-  async function fetchData(){
-    const res = await fetch('/api/list');
-    if(!res.ok) return [];
-    return res.json();
+
+<script>
+async function fetchData(){
+  const res = await fetch('/api/list');
+  if(!res.ok) return [];
+  return res.json();
+}
+
+function mkTable(items){
+  if(!items || items.length===0) return '<p>No entries yet.</p>';
+  const rows = items.map(it=>`
+    <tr>
+      <td>${it.name}</td>
+      <td>${it.phone}</td>
+      <td>${it.address||''}</td>
+      <td>${it.children.length}</td>
+      <td>${new Date(it.createdAt).toLocaleString()}</td>
+    </tr>
+  `).join('');
+  return `<table class="data-table">
+    <thead>
+      <tr><th>Name</th><th>Phone</th><th>Address</th><th>#Children</th><th>Created</th></tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function load(){
+  document.getElementById('tableWrap').innerText='Loading...';
+  const data = await fetchData();
+  window._registryData = data;
+  document.getElementById('tableWrap').innerHTML = mkTable(data);
+}
+
+document.getElementById('refresh').addEventListener('click', load);
+document.getElementById('search').addEventListener('input', (e)=>{
+  const q = e.target.value.toLowerCase().trim();
+  const filtered = (window._registryData||[]).filter(it=>it.name.toLowerCase().includes(q)||it.phone.toLowerCase().includes(q));
+  document.getElementById('tableWrap').innerHTML = mkTable(filtered);
+});
+
+load();
+
+// ---------------- VCF Download -----------------
+
+async function loadVCFButtons(){
+  const container = document.getElementById('vcfButtons');
+  container.innerHTML = 'Loading...';
+  try{
+    const res = await fetch('/api/vcf-list');
+    if(!res.ok) throw new Error('Failed to fetch VCF list');
+    const files = await res.json();
+    if(files.length===0) container.innerHTML='No VCF files found.';
+    else {
+      container.innerHTML = files.map(f=>`
+        <a href="/api/vcf-download?file=${encodeURIComponent(f)}" class="btn small" download>${f}</a>
+      `).join(' ');
+    }
+  } catch(err){
+    container.innerHTML = 'Error loading files';
   }
+}
 
-  function mkTable(items){
-    if(!items || items.length===0) return '<p>No entries yet.</p>';
-    const rows = items.map(it=>`<tr><td>${it.name}</td><td>${it.phone}</td><td>${it.address||''}</td><td>${it.children.length}</td><td>${new Date(it.createdAt).toLocaleString()}</td></tr>`).join('');
-    return `<table class="data-table"><thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>#Children</th><th>Created</th></tr></thead><tbody>${rows}</tbody></table>`;
+loadVCFButtons();
+
+// Download All VCFs
+document.getElementById('downloadAll').addEventListener('click', async ()=>{
+  try{
+    const res = await fetch('/api/vcf-list');
+    if(!res.ok) throw new Error('Failed to fetch VCF list');
+    const files = await res.json();
+    if(files.length===0) return alert('No VCF files found.');
+
+    let merged = '';
+    for(const file of files){
+      const r = await fetch(`/api/vcf-download?file=${encodeURIComponent(file)}`);
+      if(!r.ok) continue;
+      const text = await r.text();
+      merged += text + '\n';
+    }
+
+    const blob = new Blob([merged], {type:'text/vcard'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'all_vcf.vcf';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(err){
+    alert('Error: '+err.message);
   }
-
-  async function load(){
-    document.getElementById('tableWrap').innerText='Loading...';
-    const data = await fetchData();
-    window._registryData = data;
-    document.getElementById('tableWrap').innerHTML = mkTable(data);
-  }
-
-  document.getElementById('refresh').addEventListener('click', load);
-  document.getElementById('search').addEventListener('input', (e)=>{
-    const q = e.target.value.toLowerCase().trim();
-    const filtered = (window._registryData||[]).filter(it=>it.name.toLowerCase().includes(q)||it.phone.toLowerCase().includes(q));
-    document.getElementById('tableWrap').innerHTML = mkTable(filtered);
-  });
-
-  load();
-  </script>
+});
+</script>
 </body>
-    </html>
+</html>
