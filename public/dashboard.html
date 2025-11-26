@@ -80,7 +80,7 @@ async function loadVCFButtons(){
     if(files.length===0) container.innerHTML='No VCF files found.';
     else {
       container.innerHTML = files.map(f=>`
-        <a href="/api/vcf-download?file=${encodeURIComponent(f)}" class="btn small" download>${f}</a>
+        <a href="/api/vcf-download?file=${encodeURIComponent(f)}" class="btn" download>${f}</a>
       `).join(' ');
     }
   } catch(err){
