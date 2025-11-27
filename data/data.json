@@ -96,5 +96,12 @@
     "address": "National college",
     "children": [],
     "createdAt": "2025-11-27T04:00:02.337Z"
+  },
+  {
+    "name": "Umar Daraz ICS",
+    "phone": "03021054230",
+    "address": "National college",
+    "children": [],
+    "createdAt": "2025-11-27T04:00:35.002Z"
   }
 ]
